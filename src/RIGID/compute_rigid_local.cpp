@@ -19,6 +19,7 @@
 #include "domain.h"
 #include "modify.h"
 #include "fix_rigid_small.h"
+#include "fix_rigid_big.h"
 #include "memory.h"
 #include "error.h"
 

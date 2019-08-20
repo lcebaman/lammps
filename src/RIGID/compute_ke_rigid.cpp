@@ -20,6 +20,7 @@
 #include "fix.h"
 #include "fix_rigid.h"
 #include "fix_rigid_small.h"
+#include "fix_rigid_big.h"
 #include "error.h"
 
 using namespace LAMMPS_NS;
@@ -66,7 +67,11 @@ double ComputeKERigid::compute_scalar()
   if (strncmp(modify->fix[irfix]->style,"rigid",5) == 0) {
     if (strstr(modify->fix[irfix]->style,"/small")) {
       scalar = ((FixRigidSmall *) modify->fix[irfix])->extract_ke();
-    } else scalar = ((FixRigid *) modify->fix[irfix])->extract_ke();
+    }else if(strstr(modify->fix[irfix]->style,"/big")){
+      scalar = ((FixRigidBig *) modify->fix[irfix])->extract_ke();
+    } else {
+      scalar = ((FixRigid *) modify->fix[irfix])->extract_ke();
+    }
   }
   scalar *= force->mvv2e;
   return scalar;
