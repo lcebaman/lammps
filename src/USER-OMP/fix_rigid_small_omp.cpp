@@ -9,11 +9,11 @@
    the GNU General Public License.
 
    See the README file in the top-level LAMMPS directory.
-   ------------------------------------------------------------------------- */
+------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
    Contributing author: Axel Kohlmeyer (Temple U)
-   ------------------------------------------------------------------------- */
+------------------------------------------------------------------------- */
 
 #include "fix_rigid_small_omp.h"
 
@@ -122,38 +122,33 @@ void FixRigidSmallOMP::compute_forces_and_torques()
   int i, ibody;
 
 #if defined(_OPENMP)
+#pragma omp parallel for default(none) private(ibody) schedule(static)
+#endif
+  for (ibody = 0; ibody < nlocal_body+nghost_body; ibody++) {
+    double * _noalias const fcm = body[ibody].fcm;
+    fcm[0] = fcm[1] = fcm[2] = 0.0;
+    double * _noalias const tcm = body[ibody].torque;
+    tcm[0] = tcm[1] = tcm[2] = 0.0;
+  }
+
+  // sum over atoms to get force and torque on rigid body
+  // we likely have a large number of rigid objects with only a
+  // a few atoms each. so we loop over all atoms for all threads
+  // and then each thread only processes some bodies.
+
+#if defined(_OPENMP)
 #pragma omp parallel default(none) private(i,ibody)
+#endif
   {
-#endif
-
 #if defined(_OPENMP)
-#pragma omp for  schedule(static)
+    const int tid = omp_get_thread_num();
+#else
+    const int tid = 0;
 #endif
-    for (ibody = 0; ibody < nlocal_body+nghost_body; ibody++) {
-      double * _noalias const fcm = body[ibody].fcm;
-      fcm[0] = fcm[1] = fcm[2] = 0.0;
-      double * _noalias const tcm = body[ibody].torque;
-      tcm[0] = tcm[1] = tcm[2] = 0.0;
-    }
-
-    // sum over atoms to get force and torque on rigid body
-    // we likely have a large number of rigid objects with only a
-    // a few atoms each. so we loop over all atoms for all threads
-    // and then each thread only processes some bodies.
-
-#if defined(_OPENMP)
-#pragma omp for 
-#endif
-    // #if defined(_OPENMP)
-    //     const int tid = omp_get_thread_num();
-    // #else
-    //     const int tid = 0;
-    // #endif
 
     for (i = 0; i < nlocal; i++) {
       ibody = atom2body[i];
-      //if ((ibody < 0) || (ibody % nthreads != tid)) continue;
-      if ((ibody < 0)) continue;
+      if ((ibody < 0) || (ibody % nthreads != tid)) continue;
 
       Body &b = body[ibody];
 
@@ -181,34 +176,31 @@ void FixRigidSmallOMP::compute_forces_and_torques()
         tcm[1] += torque_one[i][1];
         tcm[2] += torque_one[i][2];
       }
-    } // end of (omp) for region
-    
-#if defined(_OPENMP)
+    }
   } // end of omp parallel region
-#endif
+
   // reverse communicate fcm, torque of all bodies
 
-commflag = FORCE_TORQUE;
-comm->reverse_comm_fix(this,6);
+  commflag = FORCE_TORQUE;
+  comm->reverse_comm_fix(this,6);
 
-// include Langevin thermostat forces and torques
+  // include Langevin thermostat forces and torques
 
-if (langflag) {
-
+  if (langflag) {
 #if defined(_OPENMP)
 #pragma omp parallel for default(none) private(ibody) schedule(static)
 #endif
-  for (ibody = 0; ibody < nlocal_body; ibody++) {
-    double * _noalias const fcm = body[ibody].fcm;
-    fcm[0] += langextra[ibody][0];
-    fcm[1] += langextra[ibody][1];
-    fcm[2] += langextra[ibody][2];
-    double * _noalias const tcm = body[ibody].torque;
-    tcm[0] += langextra[ibody][3];
-    tcm[1] += langextra[ibody][4];
-    tcm[2] += langextra[ibody][5];
+    for (ibody = 0; ibody < nlocal_body; ibody++) {
+      double * _noalias const fcm = body[ibody].fcm;
+      fcm[0] += langextra[ibody][0];
+      fcm[1] += langextra[ibody][1];
+      fcm[2] += langextra[ibody][2];
+      double * _noalias const tcm = body[ibody].torque;
+      tcm[0] += langextra[ibody][3];
+      tcm[1] += langextra[ibody][4];
+      tcm[2] += langextra[ibody][5];
+    }
   }
- }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -268,7 +260,7 @@ void FixRigidSmallOMP::final_integrate()
    set orientation and rotation of extended particles
    x = Q displace + Xcm, mapped back to periodic box
    v = Vcm + (W cross (x - Xcm))
-   ------------------------------------------------------------------------- */
+------------------------------------------------------------------------- */
 
 template <int TRICLINIC, int EVFLAG>
 void FixRigidSmallOMP::set_xv_thr()
@@ -464,7 +456,7 @@ void FixRigidSmallOMP::set_xv_thr()
    set space-frame velocity of each atom in a rigid body
    set omega and angmom of extended particles
    v = Vcm + (W cross (x - Xcm))
-   ------------------------------------------------------------------------- */
+------------------------------------------------------------------------- */
 
 template <int TRICLINIC, int EVFLAG>
 void FixRigidSmallOMP::set_v_thr()
@@ -626,3 +618,4 @@ void FixRigidSmallOMP::set_v_thr()
     }
   }
 }
+
