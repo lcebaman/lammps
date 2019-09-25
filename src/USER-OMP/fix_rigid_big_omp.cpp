@@ -626,3 +626,160 @@ void FixRigidBigOMP::set_v_thr()
     }
   }
 }
+
+
+/* ----------------------------------------------------------------------
+   only ghost atoms are looped over
+   only pack body info if atom owns it
+------------------------------------------------------------------------- */
+
+int FixRigidBigOMP::pack_reverse_comm(int n, int first, double *buf)
+{
+  int i,j,m,last;
+  double *fcm,*torque,*vcm,*angmom,*xcm;
+
+  m = 0;
+  last = first + n;
+
+  if (commflag == FORCE_TORQUE) {
+// #if defined(_OPENMP)
+// #pragma omp parallel for default(none) private(i,j) shared(fcm,body,bodyown,buf,torque,last,first,buf)
+// #endif
+    for (i = first; i < last; i++) {
+      if (bodyown[i] < 0) continue;
+      fcm = body[bodyown[i]].fcm;
+      buf[m++] = fcm[0];
+      buf[m++] = fcm[1];
+      buf[m++] = fcm[2];
+      torque = body[bodyown[i]].torque;
+      buf[m++] = torque[0];
+      buf[m++] = torque[1];
+      buf[m++] = torque[2];
+    }
+
+  } else if (commflag == VCM_ANGMOM) {
+    for (i = first; i < last; i++) {
+      if (bodyown[i] < 0) continue;
+      vcm = body[bodyown[i]].vcm;
+      buf[m++] = vcm[0];
+      buf[m++] = vcm[1];
+      buf[m++] = vcm[2];
+      angmom = body[bodyown[i]].angmom;
+      buf[m++] = angmom[0];
+      buf[m++] = angmom[1];
+      buf[m++] = angmom[2];
+    }
+
+  } else if (commflag == XCM_MASS) {
+    for (i = first; i < last; i++) {
+      if (bodyown[i] < 0) continue;
+      xcm = body[bodyown[i]].xcm;
+      buf[m++] = xcm[0];
+      buf[m++] = xcm[1];
+      buf[m++] = xcm[2];
+      buf[m++] = body[bodyown[i]].mass;
+    }
+
+  } else if (commflag == ITENSOR) {
+    for (i = first; i < last; i++) {
+      if (bodyown[i] < 0) continue;
+      j = bodyown[i];
+      buf[m++] = itensor[j][0];
+      buf[m++] = itensor[j][1];
+      buf[m++] = itensor[j][2];
+      buf[m++] = itensor[j][3];
+      buf[m++] = itensor[j][4];
+      buf[m++] = itensor[j][5];
+    }
+
+  } else if (commflag == DOF) {
+    for (i = first; i < last; i++) {
+      if (bodyown[i] < 0) continue;
+      j = bodyown[i];
+      buf[m++] = counts[j][0];
+      buf[m++] = counts[j][1];
+      buf[m++] = counts[j][2];
+    }
+  }
+
+  return m;
+}
+
+/* ----------------------------------------------------------------------
+   only unpack body info if own or ghost atom owns the body
+------------------------------------------------------------------------- */
+
+void FixRigidBigOMP::unpack_reverse_comm(int n, int *list, double *buf)
+{
+  int i,j,k;
+  double *fcm,*torque,*vcm,*angmom,*xcm;
+
+  int m = 0;
+
+  if (commflag == FORCE_TORQUE) {
+    
+// #if defined(_OPENMP)
+// #pragma omp parallel for default(none) private(i,j,m) shared(fcm,body,bodyown,buf,torque,n,list)
+// #endif
+    for (i = 0; i < n; i++) {
+      j = list[i];
+      if (bodyown[j] < 0) continue;
+      fcm = body[bodyown[j]].fcm;
+      fcm[0] += buf[m++];
+      fcm[1] += buf[m++];
+      fcm[2] += buf[m++];
+      torque = body[bodyown[j]].torque;
+      torque[0] += buf[m++];
+      torque[1] += buf[m++];
+      torque[2] += buf[m++];
+    }
+  
+  } else if (commflag == VCM_ANGMOM) {
+    for (i = 0; i < n; i++) {
+      j = list[i];
+      if (bodyown[j] < 0) continue;
+      vcm = body[bodyown[j]].vcm;
+      vcm[0] += buf[m++];
+      vcm[1] += buf[m++];
+      vcm[2] += buf[m++];
+      angmom = body[bodyown[j]].angmom;
+      angmom[0] += buf[m++];
+      angmom[1] += buf[m++];
+      angmom[2] += buf[m++];
+    }
+
+  } else if (commflag == XCM_MASS) {
+    for (i = 0; i < n; i++) {
+      j = list[i];
+      if (bodyown[j] < 0) continue;
+      xcm = body[bodyown[j]].xcm;
+      xcm[0] += buf[m++];
+      xcm[1] += buf[m++];
+      xcm[2] += buf[m++];
+      body[bodyown[j]].mass += buf[m++];
+    }
+
+  } else if (commflag == ITENSOR) {
+    for (i = 0; i < n; i++) {
+      j = list[i];
+      if (bodyown[j] < 0) continue;
+      k = bodyown[j];
+      itensor[k][0] += buf[m++];
+      itensor[k][1] += buf[m++];
+      itensor[k][2] += buf[m++];
+      itensor[k][3] += buf[m++];
+      itensor[k][4] += buf[m++];
+      itensor[k][5] += buf[m++];
+    }
+
+  } else if (commflag == DOF) {
+    for (i = 0; i < n; i++) {
+      j = list[i];
+      if (bodyown[j] < 0) continue;
+      k = bodyown[j];
+      counts[k][0] += static_cast<int> (buf[m++]);
+      counts[k][1] += static_cast<int> (buf[m++]);
+      counts[k][2] += static_cast<int> (buf[m++]);
+    }
+  }
+}

@@ -32,6 +32,8 @@ class FixRigidBigOMP : public FixRigidBig {
 
   virtual void initial_integrate(int);
   virtual void final_integrate();
+  virtual int  pack_reverse_comm(int, int, double*);
+  virtual void unpack_reverse_comm(int, int*, double*);
 
  protected:
   virtual void compute_forces_and_torques();
