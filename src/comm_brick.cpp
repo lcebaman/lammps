@@ -1004,7 +1004,8 @@ void CommBrick::reverse_comm_fix(Fix *fix, int size)
 
   if (size) nsize = size;
   else nsize = fix->comm_reverse;
-
+  
+ 
   for (iswap = nswap-1; iswap >= 0; iswap--) {
 
     // pack buffer

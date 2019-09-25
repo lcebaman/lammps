@@ -121,6 +121,7 @@ FixRigid::FixRigid(LAMMPS *lmp, int narg, char **arg) :
     int *mask = atom->mask;
     int nlocal = atom->nlocal;
     int custom_flag = strcmp(arg[3],"custom") == 0;
+
     if (custom_flag) {
       if (narg < 5) error->all(FLERR,"Illegal fix rigid command");
 
@@ -187,7 +188,8 @@ FixRigid::FixRigid(LAMMPS *lmp, int narg, char **arg) :
 
     for (i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) ncount[molecule[i]]++;
-
+    
+    
     memory->create(mol2body,maxmol+1,"rigid:mol2body");
     MPI_Allreduce(ncount,mol2body,maxmol+1,MPI_INT,MPI_SUM,world);
 
@@ -608,6 +610,13 @@ FixRigid::FixRigid(LAMMPS *lmp, int narg, char **arg) :
   if (me == 0) {
     if (screen) fprintf(screen,"%d rigid bodies with %d atoms\n",nbody,nsum);
     if (logfile) fprintf(logfile,"%d rigid bodies with %d atoms\n",nbody,nsum);
+
+    
+    if (screen) fprintf(screen,"%d rigid bodies; %d total atoms; %d local atoms; %d maxmol\n",
+			nbody, nsum, nlocal, maxmol);
+    if (logfile) fprintf(logfile,"%d rigid bodies; %d total atoms; %d local atoms; %d maxmol\n",
+			 nbody, nsum, nlocal, maxmol);
+    
   }
 }
 
@@ -774,7 +783,7 @@ void FixRigid::setup(int vflag)
   int i,n,ibody;
 
   // fcm = force on center-of-mass of each rigid body
-
+  
   double **f = atom->f;
   int nlocal = atom->nlocal;
 
@@ -1894,7 +1903,7 @@ void FixRigid::setup_bodies_static()
   // diagonalize inertia tensor for each body via Jacobi rotations
   // inertia = 3 eigenvalues = principal moments of inertia
   // evectors and exzy_space = 3 evectors = principal axes of rigid body
-
+  
   int ierror;
   double cross[3];
   double tensor[3][3],evectors[3][3];

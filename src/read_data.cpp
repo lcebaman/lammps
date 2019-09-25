@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------
-   LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
+   lammps - large-scale Atomic/Molecular Massively Parallel Simulator
    http://lammps.sandia.gov, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
@@ -49,7 +49,7 @@ using namespace LAMMPS_NS;
 #define LB_FACTOR 1.1
 #define CHUNK 1024
 #define DELTA 4            // must be 2 or larger
-#define MAXBODY 32         // max # of lines in one body
+#define MAXBODY 128         // max # of lines in one body
 
                            // customize for new sections
 #define NSECTIONS 25       // change when add to header::section_keywords
@@ -1754,10 +1754,11 @@ void ReadData::bodies(int firstpass)
         if (nword > ndouble)
           error->one(FLERR,"Too many values in body lines in data file");
 
-        if (onebody+1 > MAXBODY)
+        if (onebody+1 > MAXBODY){
           error->one(FLERR,
                      "Too many lines in one body in data file - boost MAXBODY");
-
+	  
+	}
         nchunk++;
         nline += onebody+1;
       }
