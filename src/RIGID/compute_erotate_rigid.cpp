@@ -19,6 +19,7 @@
 #include "fix.h"
 #include "fix_rigid.h"
 #include "fix_rigid_small.h"
+#include "fix_rigid_big.h"
 #include "error.h"
 
 using namespace LAMMPS_NS;
@@ -62,11 +63,15 @@ void ComputeERotateRigid::init()
 double ComputeERotateRigid::compute_scalar()
 {
   invoked_scalar = update->ntimestep;
-
+  
   if (strncmp(modify->fix[irfix]->style,"rigid",5) == 0) {
     if (strstr(modify->fix[irfix]->style,"/small")) {
       scalar = ((FixRigidSmall *) modify->fix[irfix])->extract_erotational();
-    } else scalar = ((FixRigid *) modify->fix[irfix])->extract_erotational();
+    }else if(strstr(modify->fix[irfix]->style,"/big")){
+      scalar = ((FixRigidBig *) modify->fix[irfix])->extract_erotational();
+    } else {
+      scalar = ((FixRigid *) modify->fix[irfix])->extract_erotational();
+    }
   }
   scalar *= force->mvv2e;
   return scalar;
